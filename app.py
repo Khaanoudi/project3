@@ -50,30 +50,33 @@ def main():
                 
                 with col1:
                     if article.get("image_url"):
-                        st.image(article["image_url"], use_column_width=True)
+                        st.image(article["image_url"], use_container_width=True)
                     
-                    # Add sentiment display
-                    if article.get("sentiment"):
-                        sentiment = article["sentiment"]
+                    # Add sentiment display with better formatting
+                    if article.get("sentiment_scores"):
+                        scores = article["sentiment_scores"]
+                        
+                        # Calculate overall sentiment
+                        max_sentiment = max(scores.items(), key=lambda x: x[1])
                         sentiment_color = {
-                            "positive": "🟢 Positive",
-                            "negative": "🔴 Negative",
-                            "neutral": "🟡 Neutral"
-                        }.get(sentiment.lower(), "⚪ Unknown")
+                            "positive": "🟢",
+                            "negative": "🔴",
+                            "neutral": "🟡"
+                        }.get(max_sentiment[0], "⚪")
                         
-                        st.markdown(f"**Sentiment:** {sentiment_color}")
+                        st.markdown(f"### {sentiment_color} Sentiment Analysis")
                         
-                        # Display sentiment scores if available
-                        if isinstance(article.get("sentiment_scores"), dict):
-                            scores = article["sentiment_scores"]
-                            st.markdown("**Sentiment Scores:**")
-                            col1_score, col2_score, col3_score = st.columns(3)
-                            with col1_score:
-                                st.metric("Positive", f"{scores.get('positive', 0):.2f}")
-                            with col2_score:
-                                st.metric("Neutral", f"{scores.get('neutral', 0):.2f}")
-                            with col3_score:
-                                st.metric("Negative", f"{scores.get('negative', 0):.2f}")
+                        # Create a more compact display for scores
+                        st.progress(scores.get("positive", 0), "Positive")
+                        st.progress(scores.get("neutral", 0), "Neutral")
+                        st.progress(scores.get("negative", 0), "Negative")
+                        
+                        # Add numerical scores in small text
+                        st.caption(f"""
+                        Positive: {scores.get('positive', 0):.2f} |
+                        Neutral: {scores.get('neutral', 0):.2f} |
+                        Negative: {scores.get('negative', 0):.2f}
+                        """)
                 
                 with col2:
                     st.subheader(article["title"])
