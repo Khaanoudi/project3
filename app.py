@@ -47,7 +47,7 @@ def get_sentiment_category(score):
         return "Negative"
     return "Neutral"
 
-def display_sentiment_comparison(entity, text):
+def display_sentiment_comparison(entity, text, parent_container):
     """Display comparison between API and calculated sentiment"""
     analyzer = get_sentiment_analyzer()
     
@@ -57,34 +57,29 @@ def display_sentiment_comparison(entity, text):
             text
         )
         
-        st.markdown("#### Sentiment Analysis Comparison")
+        parent_container.markdown("#### Sentiment Analysis Comparison")
         
-        # Create three columns for the comparison
-        col1, col2, col3 = st.columns(3)
+        # Create metrics in the same container instead of new columns
+        parent_container.metric(
+            "API Score",
+            f"{comparison['api_score']:.2f}"
+        )
         
-        with col1:
-            st.metric(
-                "API Score",
-                f"{comparison['api_score']:.2f}"
-            )
+        parent_container.metric(
+            "Calculated Score",
+            f"{comparison['calculated_score']:.2f}"
+        )
         
-        with col2:
-            st.metric(
-                "Calculated Score",
-                f"{comparison['calculated_score']:.2f}"
-            )
+        agreement_color = {
+            'High': '🟢',
+            'Medium': '🟡',
+            'Low': '🔴'
+        }[comparison['agreement']]
         
-        with col3:
-            agreement_color = {
-                'High': '🟢',
-                'Medium': '🟡',
-                'Low': '🔴'
-            }[comparison['agreement']]
-            
-            st.metric(
-                "Agreement Level",
-                f"{agreement_color} {comparison['agreement']}"
-            )
+        parent_container.metric(
+            "Agreement Level",
+            f"{agreement_color} {comparison['agreement']}"
+        )
 
 def display_sentiment(article):
     """Helper function to display sentiment information"""
@@ -134,11 +129,12 @@ def display_sentiment(article):
                             </p>
                         </div>
                         """, unsafe_allow_html=True)
-
-                        # Add sentiment comparison
+                        
+                        # Add sentiment comparison within the same column
                         display_sentiment_comparison(
                             entity,
-                            f"{article['title']} {article['description']}"
+                            f"{article['title']} {article['description']}",
+                            st  # Pass the current container
                         )
 
 def main():
