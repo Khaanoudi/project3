@@ -51,6 +51,29 @@ def main():
                 with col1:
                     if article.get("image_url"):
                         st.image(article["image_url"], use_column_width=True)
+                    
+                    # Add sentiment display
+                    if article.get("sentiment"):
+                        sentiment = article["sentiment"]
+                        sentiment_color = {
+                            "positive": "🟢 Positive",
+                            "negative": "🔴 Negative",
+                            "neutral": "🟡 Neutral"
+                        }.get(sentiment.lower(), "⚪ Unknown")
+                        
+                        st.markdown(f"**Sentiment:** {sentiment_color}")
+                        
+                        # Display sentiment scores if available
+                        if isinstance(article.get("sentiment_scores"), dict):
+                            scores = article["sentiment_scores"]
+                            st.markdown("**Sentiment Scores:**")
+                            col1_score, col2_score, col3_score = st.columns(3)
+                            with col1_score:
+                                st.metric("Positive", f"{scores.get('positive', 0):.2f}")
+                            with col2_score:
+                                st.metric("Neutral", f"{scores.get('neutral', 0):.2f}")
+                            with col3_score:
+                                st.metric("Negative", f"{scores.get('negative', 0):.2f}")
                 
                 with col2:
                     st.subheader(article["title"])
