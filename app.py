@@ -37,38 +37,88 @@ def fetch_news():
 def display_sentiment(article):
     """Helper function to display sentiment information"""
     if article.get("entities"):
-        st.markdown("### 📊 Sentiment Analysis")
+        st.markdown("### 📊 Market Sentiment")
         
-        for entity in article["entities"]:
-            if "sentiment_score" in entity:
-                score = entity["sentiment_score"]
-                
-                # Determine sentiment category based on score
-                if score > 0.6:
-                    emoji = "🟢"
-                    category = "Positive"
-                elif score < 0.4:
-                    emoji = "🔴"
-                    category = "Negative"
-                else:
-                    emoji = "🟡"
-                    category = "Neutral"
-                
-                st.markdown(f"**{emoji} {entity['name']}**")
-                st.progress(score, "Sentiment Score")
-                st.caption(f"Score: {score:.2f} ({category})")
-                st.markdown("---")
+        # Create columns for multiple entities
+        num_entities = len(article["entities"])
+        if num_entities > 0:
+            cols = st.columns(min(num_entities, 2))  # Max 2 columns
+            
+            for idx, entity in enumerate(article["entities"]):
+                if "sentiment_score" in entity:
+                    col_idx = idx % 2  # Alternate between columns
+                    with cols[col_idx]:
+                        score = entity["sentiment_score"]
+                        
+                        # Determine sentiment category and color
+                        if score > 0.6:
+                            color = "#28a745"  # Green
+                            emoji = "🟢"
+                            category = "Positive"
+                        elif score < 0.4:
+                            color = "#dc3545"  # Red
+                            emoji = "🔴"
+                            category = "Negative"
+                        else:
+                            color = "#ffc107"  # Yellow
+                            emoji = "🟡"
+                            category = "Neutral"
+                        
+                        # Company name with symbol
+                        st.markdown(f"""
+                        <div style='padding: 10px; border-radius: 5px; background-color: rgba(0,0,0,0.05)'>
+                            <h4>{emoji} {entity['name']}</h4>
+                            <p style='color: gray; font-size: 0.8em;'>{entity['symbol']}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Progress bar with custom color
+                        st.markdown(f"""
+                        <div style='margin-bottom: 5px;'>
+                            <div style='
+                                width: {score * 100}%;
+                                height: 10px;
+                                background-color: {color};
+                                border-radius: 5px;
+                            '></div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Score and category
+                        st.markdown(f"""
+                        <p style='text-align: right; color: {color}; font-weight: bold;'>
+                            {score:.2f} | {category}
+                        </p>
+                        """, unsafe_allow_html=True)
 
 def main():
     st.title("🇸🇦 Saudi Stock Market News")
     
-    # Add refresh button
-    if st.button("🔄 Refresh News"):
-        st.experimental_rerun()
+    # Add filters in sidebar
+    st.sidebar.title("Filters")
     
+    # Date range filter
+    days_ago = st.sidebar.slider("News from last N days", 1, 30, 7)
+    
+    # Sentiment filter
+    sentiment_filter = st.sidebar.multiselect(
+        "Filter by Sentiment",
+        ["Positive", "Neutral", "Negative"],
+        default=["Positive", "Neutral", "Negative"]
+    )
+    
+    # Add refresh button with loading state
+    if st.button("🔄 Refresh News"):
+        with st.spinner("Fetching latest news..."):
+            st.experimental_rerun()
+    
+    # Fetch and display news
     news_data = fetch_news()
     
     if news_data and "data" in news_data:
+        # Display total articles found
+        st.caption(f"Found {len(news_data['data'])} articles")
+        
         for article in news_data["data"]:
             with st.container():
                 col1, col2 = st.columns([1, 3])
