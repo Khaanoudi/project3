@@ -2,10 +2,6 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from sentiment_utils import (
-    create_sentiment_card_html,
-    filter_articles_by_sentiment
-)
 
 # Configure the page
 st.set_page_config(
@@ -38,8 +34,15 @@ def fetch_news(days_ago=7):
         st.error(f"Error fetching data: {str(e)}")
         return None
 
+def get_sentiment_category(score):
+    if score > 0.6:
+        return "Positive"
+    elif score < 0.4:
+        return "Negative"
+    return "Neutral"
+
 def display_sentiment(article):
-    """Display sentiment information for an article"""
+    """Helper function to display sentiment information"""
     if article.get("entities"):
         st.markdown("### 📊 Market Sentiment")
         
@@ -52,11 +55,40 @@ def display_sentiment(article):
                 if "sentiment_score" in entity:
                     col_idx = idx % 2  # Alternate between columns
                     with cols[col_idx]:
-                        html = create_sentiment_card_html(
-                            entity, 
-                            entity["sentiment_score"]
-                        )
-                        st.markdown(html, unsafe_allow_html=True)
+                        score = entity["sentiment_score"]
+                        
+                        # Determine sentiment category and color
+                        if score > 0.6:
+                            color = "#28a745"  # Green
+                            emoji = "🟢"
+                            category = "Positive"
+                        elif score < 0.4:
+                            color = "#dc3545"  # Red
+                            emoji = "🔴"
+                            category = "Negative"
+                        else:
+                            color = "#ffc107"  # Yellow
+                            emoji = "🟡"
+                            category = "Neutral"
+                        
+                        # Company name with symbol in a card-like container
+                        st.markdown(f"""
+                        <div style='padding: 15px; border-radius: 10px; background-color: rgba(0,0,0,0.05); margin-bottom: 10px;'>
+                            <h4 style='margin: 0; color: {color};'>{emoji} {entity['name']}</h4>
+                            <p style='color: gray; font-size: 0.8em; margin: 5px 0;'>{entity['symbol']}</p>
+                            <div style='margin: 10px 0;'>
+                                <div style='
+                                    width: {score * 100}%;
+                                    height: 8px;
+                                    background-color: {color};
+                                    border-radius: 4px;
+                                '></div>
+                            </div>
+                            <p style='text-align: right; color: {color}; font-weight: bold; margin: 0;'>
+                                {score:.2f} | {category}
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
 
 def main():
     st.title("🇸🇦 Saudi Stock Market News")
@@ -83,10 +115,15 @@ def main():
     news_data = fetch_news(days_ago)
     
     if news_data and "data" in news_data:
-        filtered_articles = filter_articles_by_sentiment(
-            news_data["data"], 
-            sentiment_filter
-        )
+        # Filter articles based on sentiment
+        filtered_articles = []
+        for article in news_data["data"]:
+            if article.get("entities"):
+                article_sentiments = [get_sentiment_category(entity["sentiment_score"]) 
+                                   for entity in article["entities"] 
+                                   if "sentiment_score" in entity]
+                if any(sentiment in sentiment_filter for sentiment in article_sentiments):
+                    filtered_articles.append(article)
         
         # Display total articles found
         st.caption(f"Found {len(filtered_articles)} articles matching your filters")
