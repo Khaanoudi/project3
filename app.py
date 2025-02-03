@@ -23,16 +23,46 @@ def fetch_news():
         "filter_entities": "true",
         "limit": 10,
         "published_after": published_after,
-        "api_token": API_KEY
+        "api_token": API_KEY,
+        "sentiment_analysis": "true"  # Explicitly request sentiment analysis
     }
     
     try:
         response = requests.get(BASE_URL, params=params)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        # Debug print
+        if "data" in data and len(data["data"]) > 0:
+            st.write("Debug - First article sentiment data:", data["data"][0].get("sentiment", "No sentiment"))
+        return data
     except requests.RequestException as e:
         st.error(f"Error fetching data: {str(e)}")
         return None
+
+def display_sentiment(article):
+    """Helper function to display sentiment information"""
+    # Check for different possible sentiment formats
+    sentiment = article.get("sentiment")
+    sentiment_scores = article.get("sentiment_scores")
+    
+    if sentiment or sentiment_scores:
+        st.markdown("### 📊 Sentiment Analysis")
+        
+        if isinstance(sentiment, str):
+            # Simple sentiment string
+            sentiment_color = {
+                "positive": "🟢 Positive",
+                "negative": "🔴 Negative",
+                "neutral": "🟡 Neutral"
+            }.get(sentiment.lower(), "⚪ Unknown")
+            st.markdown(f"**Overall: {sentiment_color}**")
+        
+        if isinstance(sentiment_scores, dict):
+            # Display detailed scores if available
+            for score_type in ['positive', 'neutral', 'negative']:
+                score = sentiment_scores.get(score_type, 0)
+                st.progress(float(score), f"{score_type.capitalize()}")
+                st.caption(f"{score_type.capitalize()}: {score:.2f}")
 
 def main():
     st.title("🇸🇦 Saudi Stock Market News")
@@ -51,32 +81,7 @@ def main():
                 with col1:
                     if article.get("image_url"):
                         st.image(article["image_url"], use_container_width=True)
-                    
-                    # Add sentiment display with better formatting
-                    if article.get("sentiment_scores"):
-                        scores = article["sentiment_scores"]
-                        
-                        # Calculate overall sentiment
-                        max_sentiment = max(scores.items(), key=lambda x: x[1])
-                        sentiment_color = {
-                            "positive": "🟢",
-                            "negative": "🔴",
-                            "neutral": "🟡"
-                        }.get(max_sentiment[0], "⚪")
-                        
-                        st.markdown(f"### {sentiment_color} Sentiment Analysis")
-                        
-                        # Create a more compact display for scores
-                        st.progress(scores.get("positive", 0), "Positive")
-                        st.progress(scores.get("neutral", 0), "Neutral")
-                        st.progress(scores.get("negative", 0), "Negative")
-                        
-                        # Add numerical scores in small text
-                        st.caption(f"""
-                        Positive: {scores.get('positive', 0):.2f} |
-                        Neutral: {scores.get('neutral', 0):.2f} |
-                        Negative: {scores.get('negative', 0):.2f}
-                        """)
+                    display_sentiment(article)
                 
                 with col2:
                     st.subheader(article["title"])
