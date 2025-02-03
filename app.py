@@ -21,48 +21,43 @@ def fetch_news():
     params = {
         "countries": "sa",
         "filter_entities": "true",
-        "limit": 10,
+        "limit": 2,  # Reduced to match API limit
         "published_after": published_after,
-        "api_token": API_KEY,
-        "sentiment_analysis": "true"  # Explicitly request sentiment analysis
+        "api_token": API_KEY
     }
     
     try:
         response = requests.get(BASE_URL, params=params)
         response.raise_for_status()
-        data = response.json()
-        # Debug print
-        if "data" in data and len(data["data"]) > 0:
-            st.write("Debug - First article sentiment data:", data["data"][0].get("sentiment", "No sentiment"))
-        return data
+        return response.json()
     except requests.RequestException as e:
         st.error(f"Error fetching data: {str(e)}")
         return None
 
 def display_sentiment(article):
     """Helper function to display sentiment information"""
-    # Check for different possible sentiment formats
-    sentiment = article.get("sentiment")
-    sentiment_scores = article.get("sentiment_scores")
-    
-    if sentiment or sentiment_scores:
+    if article.get("entities"):
         st.markdown("### 📊 Sentiment Analysis")
         
-        if isinstance(sentiment, str):
-            # Simple sentiment string
-            sentiment_color = {
-                "positive": "🟢 Positive",
-                "negative": "🔴 Negative",
-                "neutral": "🟡 Neutral"
-            }.get(sentiment.lower(), "⚪ Unknown")
-            st.markdown(f"**Overall: {sentiment_color}**")
-        
-        if isinstance(sentiment_scores, dict):
-            # Display detailed scores if available
-            for score_type in ['positive', 'neutral', 'negative']:
-                score = sentiment_scores.get(score_type, 0)
-                st.progress(float(score), f"{score_type.capitalize()}")
-                st.caption(f"{score_type.capitalize()}: {score:.2f}")
+        for entity in article["entities"]:
+            if "sentiment_score" in entity:
+                score = entity["sentiment_score"]
+                
+                # Determine sentiment category based on score
+                if score > 0.6:
+                    emoji = "🟢"
+                    category = "Positive"
+                elif score < 0.4:
+                    emoji = "🔴"
+                    category = "Negative"
+                else:
+                    emoji = "🟡"
+                    category = "Neutral"
+                
+                st.markdown(f"**{emoji} {entity['name']}**")
+                st.progress(score, "Sentiment Score")
+                st.caption(f"Score: {score:.2f} ({category})")
+                st.markdown("---")
 
 def main():
     st.title("🇸🇦 Saudi Stock Market News")
