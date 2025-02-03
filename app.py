@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
+from sentiment_analyzer import SentimentAnalyzer
 
 # Configure the page
 st.set_page_config(
@@ -13,6 +14,11 @@ st.set_page_config(
 # API configuration
 API_KEY = "bS2jganHVlFYtAly7ttdHYLrTB0s6BmONWmFEApD"
 BASE_URL = "https://api.stockdata.org/v1/news/all"
+
+# Initialize sentiment analyzer
+@st.cache_resource
+def get_sentiment_analyzer():
+    return SentimentAnalyzer()
 
 def fetch_news(days_ago=7):
     # Calculate date N days ago
@@ -41,6 +47,45 @@ def get_sentiment_category(score):
         return "Negative"
     return "Neutral"
 
+def display_sentiment_comparison(entity, text):
+    """Display comparison between API and calculated sentiment"""
+    analyzer = get_sentiment_analyzer()
+    
+    if "sentiment_score" in entity:
+        comparison = analyzer.get_sentiment_comparison(
+            entity["sentiment_score"],
+            text
+        )
+        
+        st.markdown("#### Sentiment Analysis Comparison")
+        
+        # Create three columns for the comparison
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                "API Score",
+                f"{comparison['api_score']:.2f}"
+            )
+        
+        with col2:
+            st.metric(
+                "Calculated Score",
+                f"{comparison['calculated_score']:.2f}"
+            )
+        
+        with col3:
+            agreement_color = {
+                'High': '🟢',
+                'Medium': '🟡',
+                'Low': '🔴'
+            }[comparison['agreement']]
+            
+            st.metric(
+                "Agreement Level",
+                f"{agreement_color} {comparison['agreement']}"
+            )
+
 def display_sentiment(article):
     """Helper function to display sentiment information"""
     if article.get("entities"):
@@ -49,11 +94,11 @@ def display_sentiment(article):
         # Create columns for multiple entities
         num_entities = len(article["entities"])
         if num_entities > 0:
-            cols = st.columns(min(num_entities, 2))  # Max 2 columns
+            cols = st.columns(min(num_entities, 2))
             
             for idx, entity in enumerate(article["entities"]):
                 if "sentiment_score" in entity:
-                    col_idx = idx % 2  # Alternate between columns
+                    col_idx = idx % 2
                     with cols[col_idx]:
                         score = entity["sentiment_score"]
                         
@@ -89,6 +134,12 @@ def display_sentiment(article):
                             </p>
                         </div>
                         """, unsafe_allow_html=True)
+
+                        # Add sentiment comparison
+                        display_sentiment_comparison(
+                            entity,
+                            f"{article['title']} {article['description']}"
+                        )
 
 def main():
     st.title("🇸🇦 Saudi Stock Market News")
